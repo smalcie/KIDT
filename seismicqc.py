@@ -3,7 +3,9 @@ import json
 import os.path
 from pyproj import Proj
 from geopandas import GeoDataFrame as gpd
-from shapely.geometry import Point
+from shapely.geometry import Point, LineString
+import matplotlib.pyplot as plt
+
 
 
 segy_file = r'data/MATAI_2003/DP15_FINAL_migration_nogain-PR2897_m3.sgy'
@@ -54,10 +56,14 @@ class SegyQC:
     def to_gdf(self):
         cdp = [item[0] for item in self.cdp_geometry_lonlat]
         geometry = [Point(item[1]) for item in self.cdp_geometry_lonlat]
+        line_geom = [LineString([item[1] for item in self.cdp_geometry_lonlat])]
+        gdf_line = gpd({'line': [self.line]}, geometry=line_geom, crs={'init': f'epsg:{self.epsg}'})
+        gdf_line.to_file('output/cdp_nav_line.shp')
+        gdf_line.plot()
+        plt.show()
         gdf = gpd(cdp, columns=['CDP'], geometry=geometry)
-        # gdf.crs = {'init': 'epsg:4326'}
         gdf.crs = {'init': f'epsg:{self.epsg}'}
-        gdf.to_file('output/cdp_nav.shp')
+        gdf.to_file('output/cdp_nav_point.shp')
         return gdf
 
     def json_string(self):
@@ -88,7 +94,7 @@ def main():
     print(qc.cdp_geometry_xy)
     print(qc.cdp_geometry_lonlat)
     x = qc.to_gdf()
-    print(x)
+    #print(x)
 
 
 if __name__ == '__main__':
