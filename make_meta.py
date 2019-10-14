@@ -1,24 +1,24 @@
 import json
 
 survey = {
-    'survey_meta':
+    'survey':
         {
             'name': 'Matai 2003',
             'type': '2D',
-            'usi': '2000000001',
+            'id': '2000000001',
             'permit': '60001',
             'operator': 'Flowers Resources Ltd',
             'start_date': '2003-02-12',
             'end_date': '2003-02-24',
         },
-    'aquisition_meta':
+    'aquisition':
         {
             'contractor': 'Seismic Blasters Ltd',
             'start_date': '2003-02-12',
             'end_date': '2003-02-24',
             'epsg': '4167',
         },
-    'processing_meta':
+    'processing':
         {
             'contractor': 'Switched On Geophysical',
             'proc_epsg': '2193',
@@ -51,7 +51,12 @@ def json_file(data):
 def main():
     print(survey)
     json_file(survey)
-    print(survey['processing_meta']['projects'][0])
+    for project in survey['processing']['projects']:
+        print(project)
+        for section in project['sections']:
+            print(section)
+
+
 
 if __name__ == '__main__':
     main()
