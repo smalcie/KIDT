@@ -1,5 +1,12 @@
 import json
 
+
+class SeismicSurvey:
+
+    def __init__(self):
+        pass
+
+
 survey = {
     'survey':
         {
