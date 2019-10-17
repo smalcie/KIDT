@@ -7,43 +7,46 @@ from shapely.geometry import Point, LineString
 import matplotlib.pyplot as plt
 
 
+line_name1 = 'M-3'
+segy_file1 = r'data/MATAI_2003/DP15_FINAL_migration_nogain-PR2897_m3.sgy'
+line_name2 = 'M-4'
+segy_file2 = r'data/MATAI_2003/DP15_FINAL_migration_nogain-PR2897_m4.sgy'
 
-segy_file = r'data/MATAI_2003/DP15_FINAL_migration_nogain-PR2897_m3.sgy'
 survey_name = 'Matai-2D'
 processing_name = 'Final Migration'
-line_name = 'M-3'
 survey_epsg = '2193'
 
 
-class SegyQC:
+class GeometrySet:
 
-    def __init__(self, file, survey, line, epsg):
-        self.basename = os.path.basename(file)
+    def __init__(self, survey, *args):
         self.survey = survey
+        self.geometries = args
+
+
+
+class SegyCDPGeom:
+
+    def __init__(self, line, epsg, file, cdp=21, cdp_x=181, cdp_y=185):
         self.line = line
         self.epsg = epsg
+        self.cdp = cdp
+        self.cdp_x = cdp_x
+        self.cdp_y = cdp_y
         with segyio.open(file, ignore_geometry=True) as f:
-            self.n_traces = f.tracecount
-            self.sample_rate = segyio.tools.dt(f) / 1000
-            self.n_samples = f.samples.size
-            self.twt_max = f.samples.max()
-            self.text_header = segyio.tools.wrap(f.text[0], width=80)
-            self.binary_header = {}
-            for k, v in f.bin.items():
-                self.binary_header[str(k)] = v
-            self.cdp_geometry_xy = self._getgeometry_xy(f)
+            self.cdp_geometry = self._get_geometry(f)
         self.cdp_geometry_lonlat = self._getgeometry_lonlat()
 
-    def _getgeometry_xy(self, f):
-        headers = segyio.tracefield.keys
-        cdp = f.attributes(headers['CDP'])[:].tolist()
-        sourcexy = zip(f.attributes(headers['SourceX'])[:].tolist(),
-                       f.attributes(headers['SourceY'])[:].tolist())
-        return list(zip(cdp, sourcexy))
+    def _get_geometry(self, f):
+        cdp = f.attributes(self.cdp)[:].tolist()
+        geometry = zip(f.attributes(self.cdp_x)[:].tolist(),
+                       f.attributes(self.cdp_y)[:].tolist())
+        return list(zip(cdp, geometry))
+
 
     def _getgeometry_lonlat(self):
-        cdp = [item[0] for item in self.cdp_geometry_xy]
-        xy = [item[1] for item in self.cdp_geometry_xy]
+        cdp = [item[0] for item in self.cdp_geometry]
+        xy = [item[1] for item in self.cdp_geometry]
         lonlat = [self._xy_to_lonlat(item) for item in xy]
         return list(zip(cdp, lonlat))
 
@@ -65,6 +68,23 @@ class SegyQC:
         gdf.crs = {'init': f'epsg:{self.epsg}'}
         gdf.to_file('output/cdp_nav_point.shp')
         return gdf
+
+class SegyQC:
+
+    def __init__(self, file, survey, line, epsg):
+        self.basename = os.path.basename(file)
+        self.survey = survey
+        self.line = line
+        self.epsg = epsg
+        with segyio.open(file, ignore_geometry=True) as f:
+            self.n_traces = f.tracecount
+            self.sample_rate = segyio.tools.dt(f) / 1000
+            self.n_samples = f.samples.size
+            self.twt_max = f.samples.max()
+            self.text_header = segyio.tools.wrap(f.text[0], width=80)
+            self.binary_header = {}
+            for k, v in f.bin.items():
+                self.binary_header[str(k)] = v
 
     def json_string(self):
         return json.dumps(self, default=convert_to_dict, indent=4)
@@ -90,11 +110,14 @@ def convert_to_dict(obj):
 
 
 def main():
-    qc = SegyQC(segy_file, survey_name, line_name, survey_epsg)
-    print(qc.cdp_geometry_xy)
-    print(qc.cdp_geometry_lonlat)
-    x = qc.to_gdf()
-    #print(x)
+    # qc = SegyQC(segy_file, survey_name, line_name, survey_epsg)
+    # print(qc.cdp_geometry_xy)
+    # print(qc.cdp_geometry_lonlat)
+    # x = qc.to_gdf()
+    # #print(x)
+    # geom = SegyCDPGeom(line=line_name, epsg=survey_epsg, file=segy_file)
+    # print(geom)
+
 
 
 if __name__ == '__main__':
