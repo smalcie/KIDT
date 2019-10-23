@@ -1,3 +1,4 @@
+from geoschema import *
 import segyio
 import json
 import os.path
@@ -6,15 +7,6 @@ from geopandas import GeoDataFrame as gpd
 from shapely.geometry import Point, LineString
 import matplotlib.pyplot as plt
 
-
-line_name1 = 'M-3'
-segy_file1 = r'data/MATAI_2003/DP15_FINAL_migration_nogain-PR2897_m3.sgy'
-line_name2 = 'M-4'
-segy_file2 = r'data/MATAI_2003/DP15_FINAL_migration_nogain-PR2897_m4.sgy'
-
-survey_name = 'Matai-2D'
-processing_name = 'Final Migration'
-survey_epsg = '2193'
 
 
 class GeometrySet:
