@@ -2,6 +2,7 @@ import json
 import os.path
 
 path_to_data = 'data'
+survey_pattern = '*_survey.json'
 
 section1 = {'line': '1001', 'file': r'/path/to/section1', 'epsg': 2193,
             'cdp': 21, 'cdpx': 73, 'cdpy': 77}
@@ -92,6 +93,9 @@ class Project(ToJsonMixin):
     def add_section(self, section):
         self.sections.append(section)
 
+    def get_sections(self):
+        return self.sections
+
 
 class SeismicSurvey(ToJsonMixin):
 
@@ -109,6 +113,9 @@ class SeismicSurvey(ToJsonMixin):
 
     def get_json_file_name(self):
         return os.path.join(path_to_data, f'{self.survey_id}_survey.json')
+
+    def get_projects(self):
+        return self.projects
 
 
 def main():

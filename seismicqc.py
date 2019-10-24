@@ -2,10 +2,24 @@ from geoschema import *
 import segyio
 import json
 import os.path
+from glob import glob
 from pyproj import Proj
 from geopandas import GeoDataFrame as gpd
 from shapely.geometry import Point, LineString
 import matplotlib.pyplot as plt
+
+
+def get_survey_meta_paths(path, pattern):
+    return glob(os.path.join(path, pattern))
+
+
+def get_survey_objects(paths):
+    survey_objects = []
+    for path in paths:
+        survey_object = ToJsonMixin.object_from_file(path)
+        survey_objects.append(survey_object)
+    return survey_objects
+
 
 
 
@@ -109,6 +123,11 @@ def main():
     # #print(x)
     # geom = SegyCDPGeom(line=line_name, epsg=survey_epsg, file=segy_file)
     # print(geom)
+    survey_objects = get_survey_objects(get_survey_meta_paths(path_to_data, survey_pattern))
+    for survey_object in survey_objects:
+        projects = survey_object.get_projects()
+        for project in projects:
+            print(project.get_sections())
 
 
 
