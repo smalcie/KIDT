@@ -21,7 +21,30 @@ def get_survey_objects(paths):
     return survey_objects
 
 
+class ProcessStaging:
 
+    def __init__(self, path):
+        self.path = path
+        self.surveys = get_survey_objects(get_survey_meta_paths(path, survey_pattern))
+
+    def __str__(self):
+        return f'<ProcessStaging: Number of surveys = {len(self.surveys)}>'
+
+    def process_qc_reports(self):
+        qc_reports = []
+        for survey in self.surveys:
+            survey_qc = SurveyQC(survey)
+            qc_reports.append(survey.make_qc_reports())
+        return qc_reports
+
+    def make_navigations(self):
+        pass
+
+class SurveyQC:
+
+    def __init__(self, survey):
+        self.survey = survey
+        self.qc_report = survey.get_qc_report()
 
 class GeometrySet:
 
@@ -30,8 +53,7 @@ class GeometrySet:
         self.geometries = args
 
 
-
-class SegyCDPGeom:
+class SegyGeom:
 
     def __init__(self, line, epsg, file, cdp=21, cdp_x=181, cdp_y=185):
         self.line = line
@@ -48,7 +70,6 @@ class SegyCDPGeom:
         geometry = zip(f.attributes(self.cdp_x)[:].tolist(),
                        f.attributes(self.cdp_y)[:].tolist())
         return list(zip(cdp, geometry))
-
 
     def _getgeometry_lonlat(self):
         cdp = [item[0] for item in self.cdp_geometry]
@@ -77,7 +98,7 @@ class SegyCDPGeom:
 
 class SegyQC:
 
-    def __init__(self, file, survey, line, epsg):
+    def __init__(self, survey, epsg, line, file):
         self.basename = os.path.basename(file)
         self.survey = survey
         self.line = line
@@ -121,13 +142,15 @@ def main():
     # print(qc.cdp_geometry_lonlat)
     # x = qc.to_gdf()
     # #print(x)
-    # geom = SegyCDPGeom(line=line_name, epsg=survey_epsg, file=segy_file)
+    # geom = SegyGeom(line=line_name, epsg=survey_epsg, file=segy_file)
     # print(geom)
-    survey_objects = get_survey_objects(get_survey_meta_paths(path_to_data, survey_pattern))
-    for survey_object in survey_objects:
-        projects = survey_object.get_projects()
-        for project in projects:
-            print(project.get_sections())
+    # survey_objects = get_survey_objects(get_survey_meta_paths(path_to_data, survey_pattern))
+    # for survey_object in survey_objects:
+    #     projects = survey_object.get_projects()
+    #     for project in projects:
+    #         print(project.get_sections())
+    ps = ProcessStaging(path_to_staging)
+    print(ps)
 
 
 

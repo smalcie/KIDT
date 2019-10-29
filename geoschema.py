@@ -1,7 +1,8 @@
 import json
 import os.path
+import seismicqc
 
-path_to_data = 'data'
+path_to_staging = 'staging'
 survey_pattern = '*_survey.json'
 
 section1 = {'line': '1001', 'file': r'/path/to/section1', 'epsg': 2193,
@@ -116,6 +117,16 @@ class SeismicSurvey(ToJsonMixin):
 
     def get_projects(self):
         return self.projects
+
+    def get_qc_report(self):
+        reports = []
+        for project in self.get_projects():
+            for section in project.get_sections():
+                segy_qc = SegyQC()
+
+
+
+
 
 
 def main():
