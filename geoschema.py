@@ -113,7 +113,7 @@ class SeismicSurvey(ToJsonMixin):
                f'year={self.year}>'
 
     def get_json_file_name(self):
-        return os.path.join(path_to_data, f'{self.survey_id}_survey.json')
+        return os.path.join(path_to_staging, f'{self.survey_id}_survey.json')
 
     def get_projects(self):
         return self.projects

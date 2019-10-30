@@ -1,4 +1,4 @@
-from geoschema import *
+import geoschema
 import segyio
 import json
 import os.path
@@ -16,7 +16,7 @@ def get_survey_meta_paths(path, pattern):
 def get_survey_objects(paths):
     survey_objects = []
     for path in paths:
-        survey_object = ToJsonMixin.object_from_file(path)
+        survey_object = geoschema.ToJsonMixin.object_from_file(path)
         survey_objects.append(survey_object)
     return survey_objects
 
@@ -25,7 +25,7 @@ class ProcessStaging:
 
     def __init__(self, path):
         self.path = path
-        self.surveys = get_survey_objects(get_survey_meta_paths(path, survey_pattern))
+        self.surveys = get_survey_objects(get_survey_meta_paths(path, geoschema.survey_pattern))
 
     def __str__(self):
         return f'<ProcessStaging: Number of surveys = {len(self.surveys)}>'
@@ -69,19 +69,29 @@ class SegyGeom:
         cdp = f.attributes(self.cdp)[:].tolist()
         geometry = zip(f.attributes(self.cdp_x)[:].tolist(),
                        f.attributes(self.cdp_y)[:].tolist())
-        return list(zip(cdp, geometry))
+        gdf = gpd(cdp, geometry=[Point(x) for x in geometry],
+                  crs={'init': f'epsg:{self.epsg}'})
+        # return list(zip(cdp, geometry))
+        return gdf
 
-    def _getgeometry_lonlat(self):
-        cdp = [item[0] for item in self.cdp_geometry]
-        xy = [item[1] for item in self.cdp_geometry]
-        lonlat = [self._xy_to_lonlat(item) for item in xy]
-        return list(zip(cdp, lonlat))
+    def _getgeometry_lonlat(self, epsg=4326):
+        new_gdf = self.cdp_geometry
+        new_gdf = new_gdf.to_crs({'init': f'epsg:{epsg}'})
+        new_gdf.plot()
+        plt.show()
+        return new_gdf
 
-    def _xy_to_lonlat(self, xy):
-        p = Proj(f'+init=epsg:{self.epsg}', preserve_flags=True)
-        x, y = xy
-        lonlat = p(x, y, inverse=True)
-        return lonlat
+        # def _getgeometry_lonlat(self):
+    #     cdp = [item[0] for item in self.cdp_geometry]
+    #     xy = [item[1] for item in self.cdp_geometry]
+    #     lonlat = [self._xy_to_lonlat(item) for item in xy]
+    #     return list(zip(cdp, lonlat))
+    #
+    # def _xy_to_lonlat(self, xy):
+    #     p = Proj(f'+init=epsg:{self.epsg}', preserve_flags=True)
+    #     x, y = xy
+    #     lonlat = p(x, y, inverse=True)
+    #     return lonlat
 
     def to_gdf(self):
         cdp = [item[0] for item in self.cdp_geometry_lonlat]
@@ -99,7 +109,7 @@ class SegyGeom:
 class SegyQC:
 
     def __init__(self, survey, epsg, line, file):
-        self.basename = os.path.basename(file)
+        self.basename = geoschema.geoschema.os.path.basename(file)
         self.survey = survey
         self.line = line
         self.epsg = epsg
@@ -117,7 +127,7 @@ class SegyQC:
         return json.dumps(self, default=convert_to_dict, indent=4)
 
     def json_file(self):
-        with open(os.path.splitext(self.basename)[0] + '.json', 'w') as fo:
+        with open(geoschema.geoschema.os.path.splitext(self.basename)[0] + '.json', 'w') as fo:
             json.dump(self, fo, default=convert_to_dict)
 
 
@@ -144,13 +154,20 @@ def main():
     # #print(x)
     # geom = SegyGeom(line=line_name, epsg=survey_epsg, file=segy_file)
     # print(geom)
-    # survey_objects = get_survey_objects(get_survey_meta_paths(path_to_data, survey_pattern))
-    # for survey_object in survey_objects:
-    #     projects = survey_object.get_projects()
-    #     for project in projects:
-    #         print(project.get_sections())
-    ps = ProcessStaging(path_to_staging)
-    print(ps)
+    survey_objects = get_survey_objects(
+        get_survey_meta_paths(geoschema.path_to_staging, geoschema.survey_pattern))
+    for survey_object in survey_objects:
+        projects = survey_object.get_projects()
+        for project in projects:
+            for section in project.get_sections():
+                print(section)
+                qc = SegyGeom(section.line, section.epsg,
+                              os.path.join(geoschema.path_to_staging, section.file),
+                              section.cdp, section.cdpx, section.cdpy)
+                print(qc.cdp_geometry.head())
+                print(qc.cdp_geometry_lonlat.head())
+
+
 
 
 
