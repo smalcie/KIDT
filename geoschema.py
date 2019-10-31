@@ -1,6 +1,7 @@
 import json
 import os.path
 import seismicqc
+from seismicqc import SegyQC
 
 path_to_staging = 'staging'
 survey_pattern = '*_survey.json'
@@ -122,7 +123,10 @@ class SeismicSurvey(ToJsonMixin):
         reports = []
         for project in self.get_projects():
             for section in project.get_sections():
-                segy_qc = SegyQC()
+                segy_qc = SegyQC(self.survey_name, section.epsg, section.line,
+                                 os.path.join(path_to_staging, section.file))
+                reports.append(segy_qc)
+        return reports
 
 
 

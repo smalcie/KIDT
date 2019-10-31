@@ -26,19 +26,29 @@ class ProcessStaging:
     def __init__(self, path):
         self.path = path
         self.surveys = get_survey_objects(get_survey_meta_paths(path, geoschema.survey_pattern))
+        self.qc_reports = self._process_qc_reports()
 
     def __str__(self):
         return f'<ProcessStaging: Number of surveys = {len(self.surveys)}>'
 
-    def process_qc_reports(self):
+    def _process_qc_reports(self):
+        print('Processing QC Reports')
         qc_reports = []
         for survey in self.surveys:
             survey_qc = SurveyQC(survey)
-            qc_reports.append(survey.make_qc_reports())
+            print(survey_qc)
+            qc_reports.append(survey_qc)
         return qc_reports
 
-    def make_navigations(self):
-        pass
+    def write_qc_reports(self):
+        for qc_report in self.qc_reports:
+            qc_report.json_file()
+
+    def make_navigation(self):
+        for survey in self.surveys:
+            geomset = GeometrySet(survey)
+
+
 
 class SurveyQC:
 
@@ -46,11 +56,18 @@ class SurveyQC:
         self.survey = survey
         self.qc_report = survey.get_qc_report()
 
+
 class GeometrySet:
 
-    def __init__(self, survey, *args):
+    def __init__(self, survey):
         self.survey = survey
-        self.geometries = args
+        self.geomset = self._get_geomset()
+
+    def _get_geomset(self):
+        for project in self.survey.get_projects():
+            for section in project.get_sections():
+                print(section)
+
 
 
 class SegyGeom:
@@ -63,7 +80,7 @@ class SegyGeom:
         self.cdp_y = cdp_y
         with segyio.open(file, ignore_geometry=True) as f:
             self.cdp_geometry = self._get_geometry(f)
-        self.cdp_geometry_lonlat = self._getgeometry_lonlat()
+        self.cdp_geometry_as_line = self._get_geometry_as_line()
 
     def _get_geometry(self, f):
         cdp = f.attributes(self.cdp)[:].tolist()
@@ -71,45 +88,24 @@ class SegyGeom:
                        f.attributes(self.cdp_y)[:].tolist())
         gdf = gpd(cdp, geometry=[Point(x) for x in geometry],
                   crs={'init': f'epsg:{self.epsg}'})
-        # return list(zip(cdp, geometry))
         return gdf
 
-    def _getgeometry_lonlat(self, epsg=4326):
-        new_gdf = self.cdp_geometry
-        new_gdf = new_gdf.to_crs({'init': f'epsg:{epsg}'})
-        new_gdf.plot()
-        plt.show()
-        return new_gdf
+    def _get_geometry_as_line(self, epsg=4326):
+        gdf = self.cdp_geometry
+        gdf = gdf.to_crs({'init': f'epsg:{epsg}'})
+        line_geom = [LineString([(geometry.x, geometry.y) for geometry in gdf['geometry']])]
+        gdf_line = gpd({'line': [self.line]}, geometry=line_geom, crs={'init': f'epsg:{epsg}'})
+        print(gdf_line)
+        return gdf_line
 
-        # def _getgeometry_lonlat(self):
-    #     cdp = [item[0] for item in self.cdp_geometry]
-    #     xy = [item[1] for item in self.cdp_geometry]
-    #     lonlat = [self._xy_to_lonlat(item) for item in xy]
-    #     return list(zip(cdp, lonlat))
-    #
-    # def _xy_to_lonlat(self, xy):
-    #     p = Proj(f'+init=epsg:{self.epsg}', preserve_flags=True)
-    #     x, y = xy
-    #     lonlat = p(x, y, inverse=True)
-    #     return lonlat
+    def get_geometry(self):
+        return self.cdp_geometry_as_line
 
-    def to_gdf(self):
-        cdp = [item[0] for item in self.cdp_geometry_lonlat]
-        geometry = [Point(item[1]) for item in self.cdp_geometry_lonlat]
-        line_geom = [LineString([item[1] for item in self.cdp_geometry_lonlat])]
-        gdf_line = gpd({'line': [self.line]}, geometry=line_geom, crs={'init': f'epsg:{self.epsg}'})
-        gdf_line.to_file('output/cdp_nav_line.shp')
-        gdf_line.plot()
-        plt.show()
-        gdf = gpd(cdp, columns=['CDP'], geometry=geometry)
-        gdf.crs = {'init': f'epsg:{self.epsg}'}
-        gdf.to_file('output/cdp_nav_point.shp')
-        return gdf
 
 class SegyQC:
 
     def __init__(self, survey, epsg, line, file):
-        self.basename = geoschema.geoschema.os.path.basename(file)
+        self.basename = os.path.basename(file)
         self.survey = survey
         self.line = line
         self.epsg = epsg
@@ -127,7 +123,7 @@ class SegyQC:
         return json.dumps(self, default=convert_to_dict, indent=4)
 
     def json_file(self):
-        with open(geoschema.geoschema.os.path.splitext(self.basename)[0] + '.json', 'w') as fo:
+        with open(os.path.join(geoschema.path_to_staging, os.path.splitext(self.basename)[0] + '.json', 'w')) as fo:
             json.dump(self, fo, default=convert_to_dict)
 
 
@@ -154,18 +150,20 @@ def main():
     # #print(x)
     # geom = SegyGeom(line=line_name, epsg=survey_epsg, file=segy_file)
     # print(geom)
-    survey_objects = get_survey_objects(
-        get_survey_meta_paths(geoschema.path_to_staging, geoschema.survey_pattern))
-    for survey_object in survey_objects:
-        projects = survey_object.get_projects()
-        for project in projects:
-            for section in project.get_sections():
-                print(section)
-                qc = SegyGeom(section.line, section.epsg,
-                              os.path.join(geoschema.path_to_staging, section.file),
-                              section.cdp, section.cdpx, section.cdpy)
-                print(qc.cdp_geometry.head())
-                print(qc.cdp_geometry_lonlat.head())
+    # survey_objects = get_survey_objects(
+    #     get_survey_meta_paths(geoschema.path_to_staging, geoschema.survey_pattern))
+    # for survey_object in survey_objects:
+    #     projects = survey_object.get_projects()
+    #     for project in projects:
+    #         for section in project.get_sections():
+    #             print(section)
+    #             qc = SegyGeom(section.line, section.epsg,
+    #                           os.path.join(geoschema.path_to_staging, section.file),
+    #                           section.cdp, section.cdpx, section.cdpy)
+                # print(qc.cdp_geometry.head())
+                # print(qc.cdp_geometry_as_line.head())
+    ps = ProcessStaging(geoschema.path_to_staging)
+    ps.process_qc_reports()
 
 
 
